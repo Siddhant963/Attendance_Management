@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logout, selectUser } from '../features/auth/authSlice.js';
 import { baseApi } from '../api/baseApi.js';
 import { Icon } from './ui.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
 import { initials } from '../utils/format.js';
 
 const NAV_GROUPS = [
@@ -86,6 +87,7 @@ export default function AppLayout() {
           ))}
         </div>
         <div className="sidebar-foot">
+          <ThemeToggle showLabel className="block" />
           <div className="sidebar-foot-row">
             <div className="sidebar-foot-user">
               <div className="avatar">{initials(user.name)}</div>

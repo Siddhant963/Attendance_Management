@@ -5,6 +5,7 @@ import { setCredentials } from '../features/auth/authSlice.js';
 import { useLoginMutation, useSignupMutation } from '../api/endpoints.js';
 import { errorMessage } from '../api/baseApi.js';
 import { Alert, Field, Icon, InputWithIcon } from '../components/ui.jsx';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 
 // Opt-in helpers (VITE_SHOW_DEMO=true) for local evaluation or an isolated demo environment. They only pre-fill the
 // form for accounts created by `npm run seed`; sign-in still goes through the real API.
@@ -19,6 +20,7 @@ const showDemo = import.meta.env.VITE_SHOW_DEMO === 'true';
 function AuthShell({ active, subtitle, children }) {
   return (
     <div className="auth-page">
+      <ThemeToggle className="theme-toggle-floating" />
       <div className="card auth-card">
         <div className="auth-brand">
           <div className="mark">A</div>
