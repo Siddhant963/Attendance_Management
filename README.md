@@ -1,135 +1,272 @@
-# AttendFlow — Attendance Management System
+<div align="center">
 
-MERN application for tracking employee attendance with a live selfie and browser location, an overtime approval workflow, attendance verification and daily reports. Roles: **Employee**, **Manager**, **Admin**.
+<img src="docs/assets/attendflow-banner.svg" alt="AttendFlow logo: a checkmark inside a clock ring, with the tagline Attendance, verified with clarity." width="720">
 
-## Stack
+<br>
 
-| Layer | Tech |
+![React](https://img.shields.io/badge/React_19-0B1426?style=flat-square&logo=react&logoColor=2563EB)
+![Vite](https://img.shields.io/badge/Vite-0B1426?style=flat-square&logo=vite&logoColor=2563EB)
+![Redux Toolkit](https://img.shields.io/badge/Redux_Toolkit-0B1426?style=flat-square&logo=redux&logoColor=2563EB)
+![Node.js](https://img.shields.io/badge/Node.js-0B1426?style=flat-square&logo=nodedotjs&logoColor=2563EB)
+![Express](https://img.shields.io/badge/Express_5-0B1426?style=flat-square&logo=express&logoColor=2563EB)
+![MongoDB](https://img.shields.io/badge/MongoDB-0B1426?style=flat-square&logo=mongodb&logoColor=2563EB)
+
+[Live app](https://attendance-management-iota-two.vercel.app/) · [Backend](https://attendance-management-3ye0.onrender.com/) · [Source](https://github.com/Siddhant963/Attendance_Management) · [Design reference](https://stitch.withgoogle.com/projects/16927878864864845580)
+
+</div>
+
+---
+
+## Overview
+
+AttendFlow is a MERN attendance management system. Employees punch in and out with a live camera selfie and browser location, request overtime for a completed day, and see their own history. Managers and admins verify attendance, approve overtime and read daily reports for the people in their scope.
+
+There are three roles: **Employee**, **Manager** and **Admin**. The frontend and backend are separate services, deployed at the links above. The deployed workflows have not been re-verified as part of this README; see [Deployment](#deployment).
+
+| Resource | Link |
 | --- | --- |
-| Frontend | React 19, Vite, Redux Toolkit + RTK Query, React Router |
-| Backend | Node.js, Express 5, Mongoose, Zod validation, JWT, Winston + Morgan logging |
-| Database | MongoDB |
+| Frontend (Vercel) | https://attendance-management-iota-two.vercel.app/ |
+| Backend API (Render) | https://attendance-management-3ye0.onrender.com/api/health |
+| Repository | https://github.com/Siddhant963/Attendance_Management |
+| Design reference | [Google Stitch project](https://stitch.withgoogle.com/projects/16927878864864845580) |
 
-## Setup
+## Preview
 
-Requirements: Node 20.19+ and a MongoDB instance (local or Atlas).
+The repository does not contain application screenshots. The intended visual design (the "Executive Precision" system, with light and dark themes) is in the [Stitch project](https://stitch.withgoogle.com/projects/16927878864864845580). Those are design mockups, not captures of the running app.
 
-```bash
-# Backend
-cd backend
-cp .env.example .env        # set MONGODB_URI and a long random JWT_SECRET
-npm install
-npm run seed                # optional, local evaluation only: creates demo accounts (see Demo accounts)
-npm run dev                 # http://localhost:5000
+## Features
 
-# Frontend (second terminal)
-cd frontend
-npm install
-npm run dev                 # http://localhost:5173 (proxies /api to the backend)
+**Authentication and role-based access**
+- Email and password signup and login (bcrypt hashing, JWT bearer tokens), with rate limiting on both routes.
+- Role checks on frontend routes and on every backend route; the server is the source of truth.
+- Admins can disable accounts; a disabled user's token stops working immediately.
+
+**Attendance capture**
+- Punch in and out with a selfie taken from the live camera (`getUserMedia`, no file upload) and the browser's geolocation.
+- One record per user per day, enforced by a unique index; concurrent punches cannot create duplicates.
+
+**Working hours**
+- Hours are computed on the server from stored timestamps. 8 hours or more is *Completed*, less is *Incomplete*, and punched in only is *In progress*.
+
+**Overtime workflow**
+- Employees request overtime against a punched-out day (one request per day).
+- A manager or admin approves or rejects; rejection requires a remark. The result is written to the attendance record.
+
+**Attendance verification**
+- Managers and admins mark a record *Valid* or *Invalid* (a remark is required for invalid) and can add notes. Reviewers cannot verify or approve their own records.
+
+**Administration and reports**
+- Role-specific dashboards, a daily report (own, team or all), filters with pagination, and a print-friendly report layout.
+- Admin Users page: change roles, assign managers, activate or disable accounts.
+- Light and dark themes.
+
+**Not implemented:** geofencing, notifications, real-time updates, face matching, PDF or Excel export.
+
+## Role Permissions
+
+| Capability | Employee | Manager | Admin |
+| --- | :---: | :---: | :---: |
+| Sign up (always creates an Employee) | ✔ | ✔ | ✔ |
+| Punch in / out, view own attendance | ✔ | ✔ | ✔ |
+| Request overtime for own days | ✔ | ✔ | ✔ |
+| Daily report and dashboard | Own | Team | Everyone |
+| View attendance and selfies of others | — | Assigned team | Everyone |
+| Verify attendance | — | Team | Everyone |
+| Approve / reject overtime | — | Team | Everyone |
+| Review own records | — | — | — |
+| Manage users (roles, manager, active status) | — | — | ✔ |
+
+A manager's own records are reviewed by an admin. Verified against `backend/src/routes/index.js`, `backend/src/services/scopeService.js` and `frontend/src/App.jsx`.
+
+## Technology Stack
+
+| Area | Technology |
+| --- | --- |
+| Frontend | React 19, Vite, React Router |
+| State and API | Redux Toolkit, RTK Query |
+| Backend | Node.js, Express 5, JWT, bcryptjs, Helmet, CORS, express-rate-limit |
+| Database | MongoDB with Mongoose |
+| Validation and logging | Zod, Winston, Morgan |
+| Testing | Node's built-in test runner, Supertest, mongodb-memory-server |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  B[Browser<br/>camera + geolocation] --> F[React SPA<br/>Redux Toolkit + RTK Query]
+  F -->|HTTPS, Bearer JWT| A[Express API<br/>/api]
+  A --> M[Middleware<br/>auth, RBAC, Zod validation, rate limit]
+  M --> C[Controllers]
+  C --> S[Services<br/>attendance, overtime, access scope]
+  S --> D[(MongoDB<br/>users, attendance, overtime)]
+  S --> P[(MongoDB selfies collection)]
+  P -.->|authorized read only| C
 ```
 
-Tests (backend; uses an in-memory MongoDB, downloaded on first run): `cd backend && npm test`
-Production build (frontend): `cd frontend && npm run build`
+- Selfies are stored as binary documents in a separate `selfies` collection of the same database. They are never served statically; the selfie endpoint checks the caller's access first, and the UI fetches them with the bearer token.
+- Every attendance, selfie, report and overtime query is filtered through `scopeService`, which limits employees to themselves, managers to their assigned team and admins to everyone.
+- `backend/src/utils/selfieStorage.js` is the only file that touches selfie storage, so it can be replaced if volume outgrows MongoDB.
 
-### Environment
+## Project Structure
 
-Backend (`backend/.env`, see `backend/.env.example`):
+```text
+.
+├── backend
+│   ├── src
+│   │   ├── config/        env, Winston logger, database connection
+│   │   ├── controllers/   thin HTTP layer
+│   │   ├── middleware/    authenticate / authorize, validation, error handler
+│   │   ├── models/        User, Attendance, OvertimeRequest, Selfie
+│   │   ├── routes/        route table with per-route role guards
+│   │   ├── seed/          local demo-account seed
+│   │   ├── services/      attendance, overtime, access scope
+│   │   ├── utils/         selfie storage, business-date helper, ApiError
+│   │   ├── validators.js  Zod request schemas
+│   │   ├── app.js
+│   │   └── server.js
+│   └── tests/             api, cors, seed, selfie tests
+├── frontend
+│   ├── src
+│   │   ├── api/           RTK Query base API and endpoints
+│   │   ├── app/           Redux store
+│   │   ├── components/    layout, route guards, camera capture, tables
+│   │   ├── features/auth/ auth slice
+│   │   ├── hooks/         geolocation, theme
+│   │   ├── pages/         one file per screen group
+│   │   └── main.jsx
+│   └── vercel.json        SPA rewrite
+└── docs/assets            README banner
+```
 
-| Variable | Required | Notes |
+## Local Setup
+
+**Prerequisites:** Node.js 20.19 or newer, npm, and a MongoDB database (local or Atlas).
+
+**1. Backend**
+
+```bash
+cd backend
+cp .env.example .env        # PowerShell: Copy-Item .env.example .env
+npm install
+```
+
+Edit `backend/.env`: set `MONGODB_URI` and replace `JWT_SECRET` with a long random string. Keep this file local; it is git-ignored.
+
+Optional, for local evaluation only: create demo accounts (see [Demo Environment and Security](#demo-environment-and-security)).
+
+```bash
+npm run seed
+npm run dev                 # http://localhost:5000
+```
+
+**2. Frontend** (second terminal)
+
+```bash
+cd frontend
+npm install
+npm run dev                 # http://localhost:5173, proxies /api to localhost:5000
+```
+
+**Production build**
+
+```bash
+cd frontend && npm run build    # output in frontend/dist
+cd backend && npm start         # serves the API only
+```
+
+Camera and location access require HTTPS or `localhost`.
+
+## Environment Variables
+
+**Backend** (`backend/.env`, template in `backend/.env.example`)
+
+| Variable | Purpose | Required | Example |
+| --- | --- | --- | --- |
+| `MONGODB_URI` | MongoDB connection string; selfies are stored in the same database | Yes | `mongodb+srv://<user>:<password>@<cluster>/<db>` |
+| `JWT_SECRET` | Signing key for access tokens | Yes | `<long-random-string>` |
+| `CLIENT_ORIGIN` | Comma-separated allowed frontend origins, no trailing slash. Defaults to `http://localhost:5173`, so a deployed frontend is blocked by CORS until this is set | In production | `https://<your-frontend-host>` |
+| `NODE_ENV` | `production` hides internal error messages, uses combined request logs and blocks the demo seed | In production | `production` |
+| `PORT` | HTTP port (default `5000`; hosts such as Render provide it) | No | `5000` |
+| `JWT_EXPIRES_IN` | Token lifetime (default `1d`) | No | `1d` |
+| `APP_TIMEZONE` | Business timezone for attendance days (default `Asia/Kolkata`) | No | `Asia/Kolkata` |
+| `DNS_SERVERS` | Custom DNS servers, only if a `mongodb+srv://` URI fails with `querySrv ECONNREFUSED` | No | `1.1.1.1,8.8.8.8` |
+| `ALLOW_DEMO_SEED` | Read only by `npm run seed`; lets it run with `NODE_ENV=production` | No | `true` |
+
+**Frontend** (`frontend/.env`; Vite reads these at **build time**)
+
+| Variable | Purpose | Required | Example |
+| --- | --- | --- | --- |
+| `VITE_API_URL` | Deployed backend API URL, ending in `/api`. Leave unset in development | In production | `https://<your-backend-host>/api` |
+| `VITE_SHOW_DEMO` | Shows the demo-login helper only when exactly `true` | No | `false` |
+
+In production, set secrets in the hosting provider's environment settings, never in committed files.
+
+## API Overview
+
+All routes are under `/api`. Everything except `/health`, `/auth/signup` and `/auth/login` requires `Authorization: Bearer <token>`. Request bodies and queries are validated with Zod.
+
+| Method and path | Access | Purpose |
 | --- | --- | --- |
-| `MONGODB_URI` | yes | MongoDB connection string. Selfies are stored in the same database. |
-| `JWT_SECRET` | yes | Long random string; never reuse a development value. |
-| `CLIENT_ORIGIN` | in production | Comma-separated allowed frontend origins, no trailing slash. Defaults to `http://localhost:5173`, so browser requests from a deployed frontend are blocked until it is set. |
-| `NODE_ENV` | in production | Set to `production` (hides internal error messages, JSON logs, blocks the demo seed). |
-| `PORT` | no | Defaults to 5000; hosts such as Render provide it. |
-| `JWT_EXPIRES_IN` | no | Defaults to `1d`. |
-| `APP_TIMEZONE` | no | Business timezone for attendance days; defaults to `Asia/Kolkata`. |
-| `DNS_SERVERS` | no | Comma-separated DNS servers for Node, for example `1.1.1.1,8.8.8.8`. Only needed when a `mongodb+srv://` URI fails with `querySrv ECONNREFUSED` because the local router refuses SRV lookups. |
-| `ALLOW_DEMO_SEED` | no | Only read by `npm run seed`; see Demo accounts. |
+| `GET /health` | Public | Health check |
+| `POST /auth/signup`, `POST /auth/login` | Public, rate limited | Create an employee account; sign in |
+| `GET /auth/me` | Any signed-in user | Current user |
+| `POST /attendance/punch-in`, `/punch-out` | Any role | Punch with selfie and location |
+| `GET /attendance/current`, `/attendance/me` | Any role | Own current record and history |
+| `GET /attendance` | Manager, Admin | Scoped attendance list with filters |
+| `GET /attendance/:id`, `/attendance/:id/selfie/:kind` | Owner, or reviewer in scope | Record detail; selfie (`in` or `out`) |
+| `PATCH /attendance/:id/verification` | Manager, Admin | Mark Valid or Invalid with remark |
+| `POST /overtime`, `GET /overtime/me` | Any role | Request overtime; list own requests |
+| `GET /overtime` | Manager, Admin | Scoped overtime requests |
+| `PATCH /overtime/:id/decision` | Manager, Admin | Approve or reject |
+| `GET /users`, `/users/managers`, `PATCH /users/:id` | Admin | List users and managers; change role, manager, status |
+| `GET /users/options` | Manager, Admin | Users available for report and list filters |
+| `GET /reports/daily` | Any role, scoped | Daily report |
+| `GET /dashboard/summary` | Any role, scoped | Role-specific dashboard figures |
 
-Frontend (`frontend/.env`, see `frontend/.env.example`). Vite reads these at **build time**:
+## Testing and Quality
 
-| Variable | Notes |
-| --- | --- |
-| `VITE_API_URL` | Deployed backend API, ending in `/api` (for example `https://<your-backend-host>/api`). Leave unset in development; Vite proxies `/api` to `localhost:5000`. |
-| `VITE_SHOW_DEMO` | Demo-login helpers are shown only when this is exactly `true`. Use `false` or leave it unset for any real deployment. |
+```bash
+cd backend && npm test          # node --test, in-memory MongoDB (downloaded on first run)
+cd frontend && npm run build    # production build check
+```
 
-### Demo accounts (local evaluation or an isolated demo environment only)
+At the time of writing, the backend suite ran 36 tests with 0 failures and the frontend production build succeeded. Re-run both for current results; there is no CI badge because no CI is configured.
 
-`npm run seed` creates one demo account per role (employee, manager, admin) with a shared sample password, and prints the emails and password when it finishes. The employee is assigned to the demo manager. The accounts sign in through the normal login endpoint, so they get no special access, but the admin account is a real administrator: **never seed it into a database that holds real users.**
-
-- The seed refuses to run when `NODE_ENV=production` unless `ALLOW_DEMO_SEED=true` is set explicitly.
-- The login page shows the "Demo accounts" helper only in a frontend built with `VITE_SHOW_DEMO=true`. The helper merely pre-fills the form. Hiding it is a convenience, not a security control; the backend enforces all authentication and authorization.
-- Public signup always creates employees. An admin promotes users and assigns managers from the Users page.
-
-To offer demo logins to evaluators safely, run a separate demo environment: a separate Atlas database (for example `attendflow_demo`) with its own `MONGODB_URI` and `JWT_SECRET`, a separate backend service pointing at it, and a separate frontend build with `VITE_SHOW_DEMO=true` and `VITE_API_URL` pointing at that backend. Run `ALLOW_DEMO_SEED=true npm run seed` once against the demo database, use synthetic data only, and drop the database when the evaluation ends.
+Automated tests cover the API, CORS, seeding and selfie storage. There is no frontend test suite. Camera and location behavior was exercised in a browser with a fake camera and emulated location, not on physical devices.
 
 ## Deployment
 
 The frontend and backend are separate services.
 
-**Database (MongoDB Atlas or any persistent MongoDB):** create a database user and allow the backend host's outbound IPs in the network access list. Use the connection string as `MONGODB_URI`.
+- **Database:** MongoDB Atlas or any persistent MongoDB. Create a database user and allow the backend host's outbound IPs.
+- **Backend (Render or similar, Node 20.19+):** root directory `backend`, build `npm ci --omit=dev`, start `npm start`, health check `/api/health`. Set `NODE_ENV`, `MONGODB_URI`, `JWT_SECRET` and `CLIENT_ORIGIN` (the frontend's exact origin).
+- **Frontend (Vercel):** root directory `frontend`, Vite preset (`npm run build`, output `dist`). Set `VITE_API_URL` and `VITE_SHOW_DEMO=false` before building. `frontend/vercel.json` rewrites every path except `/api/...` to `index.html`, so deep links such as `/dashboard` survive a refresh.
+- **First administrator:** the demo seed is blocked in production and signup only creates employees, so promote one account directly in the database, for example `db.users.updateOne({ email: "you@example.com" }, { $set: { role: "admin" } })`. That admin assigns all other roles from the Users page.
 
-**Backend (Render or similar, Node 20.19+):** root directory `backend`; build `npm ci --omit=dev`; start `npm start`; health check `/api/health`. Set `NODE_ENV=production`, `MONGODB_URI`, `JWT_SECRET` and `CLIENT_ORIGIN` (the frontend's exact origin).
+**Known limitation:** this README does not certify the state of the live deployment. End-to-end flows there (including camera and location on real devices) should be checked after each deploy.
 
-**Frontend (Vercel):** root directory `frontend`; framework preset Vite (build `npm run build`, output `dist`). Set `VITE_API_URL` (ending in `/api`) and `VITE_SHOW_DEMO=false` before building. `frontend/vercel.json` rewrites every path except `/api/...` to `index.html`, so refreshing or opening `/dashboard`, `/reports` or `/users` directly loads the app. API calls are not rewritten; the backend stays a separate service. On Netlify use an equivalent rule, `/* /index.html 200`, in a `_redirects` file.
+## Demo Environment and Security
 
-**First administrator in a real deployment:** the demo seed is blocked in production and signup only creates employees, so promote one account directly in the database after it signs up, for example `db.users.updateOne({ email: "you@example.com" }, { $set: { role: "admin" } })`. That admin assigns every other role from the Users page.
+- `npm run seed` creates one demo account per role and prints the sign-in details in your terminal when it finishes. Credentials are intentionally not published here.
+- The demo admin is a real administrator. **Never seed demo accounts into a database that holds real users.** The seed refuses to run when `NODE_ENV=production` unless `ALLOW_DEMO_SEED=true`.
+- To offer demo logins to evaluators, run a separate environment: its own database, `JWT_SECRET` and backend, plus a frontend built with `VITE_SHOW_DEMO=true`. Use synthetic data only and drop the database afterwards.
+- The demo-login helper only pre-fills the form. Hiding it is a convenience, not a security control.
+- Public signup always creates an employee; only an admin can change roles. Authentication and authorization are enforced on the server for every protected route.
 
-## Architecture
+## Assumptions and Limitations
 
-```
-backend/src
-  config/       env, logger (Winston), db connection
-  models/       User, Attendance, OvertimeRequest, Selfie
-  middleware/   authenticate / authorize (RBAC), zod validate, error handler
-  validators.js request schemas
-  services/     business rules (punching, overtime, verification, access scope)
-  controllers/  thin HTTP layer
-  routes/       route table with per-route role guards
-  utils/        selfie storage (MongoDB), business-date helper, ApiError
-frontend/src
-  api/          RTK Query base API + endpoint definitions
-  features/     auth slice (token, current user)
-  components/   reusable UI, camera capture, selfie viewer, layout, route guards
-  pages/        one file per screen group
-```
+- Attendance days are calendar days in `APP_TIMEZONE`. A user with an unclosed record from an earlier day must punch out of it before punching in again.
+- Selfies are reviewed by people. The app makes no biometric or face-matching claims, and there is no geofencing: location is recorded, not validated.
+- Managers are linked to employees by an admin.
+- The daily report lists recorded attendance and does not infer absences.
+- Tokens are kept in `localStorage`. There are no refresh tokens or revocation beyond disabling the account, and rate limiting is per backend instance.
+- Each selfie is capped at 1.5 MB and stored in MongoDB; watch database size on small Atlas tiers.
+- Selfies from the earlier disk-based version were not migrated and show as unavailable. New deployments should start from an empty database.
 
-Key design points:
+## Design Reference and Acknowledgments
 
-- **Access scope** (`scopeService`): employees see only themselves; managers see the employees whose `manager` is them; admins see everyone. Every attendance, selfie, report and overtime query is filtered through it, and reviewers can never verify or approve their own records.
-- **Duplicate punch prevention**: a unique index on `(user, date)` plus guarded updates. Concurrent punch-ins create one record; a second punch-out matches nothing and returns 409.
-- **Working hours** are computed on the server from stored punch timestamps; clients cannot send them. `>= 8h` → *Completed*, `< 8h` → *Incomplete*, punched in only → *In progress*.
-- **Selfies** are captured from the camera via `getUserMedia` (no file input), sent as a JPEG data URL, validated (type, size, magic bytes) and stored as binary documents in a dedicated `selfies` collection of the same MongoDB database, so they survive restarts and redeploys on hosts with ephemeral disks. They are never served statically; `GET /api/attendance/:id/selfie/:in|out` checks the caller's access, and the UI loads them with the bearer token.
-- **Overtime**: employees request against a punched-out day (one request per day); the manager or admin approves or rejects (rejection needs a remark). The decision is written to the attendance record's `overtimeStatus`.
-- **Verification**: managers/admins mark a record *Valid* or *Invalid* (remark required for invalid) and add notes.
+The UI follows the "Executive Precision" design direction prepared in [Google Stitch](https://stitch.withgoogle.com/projects/16927878864864845580).
 
-### Screens
+## License
 
-Login · Signup · Employee dashboard · Punch in/out (camera + location) · My attendance (with overtime request) · My overtime · Manager dashboard · Admin dashboard · Overtime approvals · Attendance verification · Daily report. The admin also has a Users page (roles, manager assignment, activate/disable).
-
-### API summary
-
-`POST /api/auth/signup|login`, `GET /api/auth/me` · `POST /api/attendance/punch-in|punch-out`, `GET /api/attendance/current|me`, `GET /api/attendance` (manager/admin), `GET /api/attendance/:id`, `GET /api/attendance/:id/selfie/:kind`, `PATCH /api/attendance/:id/verification` · `POST /api/overtime`, `GET /api/overtime/me`, `GET /api/overtime`, `PATCH /api/overtime/:id/decision` · `GET /api/users`, `PATCH /api/users/:id` (admin), `GET /api/users/options|managers` · `GET /api/reports/daily` · `GET /api/dashboard/summary`.
-
-## Features implemented
-
-Authentication (bcrypt + JWT), RBAC on frontend and backend, punch in/out with live selfie and geolocation, server-side hours and status, overtime request/approval, verification with remarks, role-specific dashboards, daily report (own / team / all), filters (date range, user, status, verification), pagination, request validation, centralized error handling, request logging, auth rate limiting, responsive layout, print-friendly report.
-
-Not implemented: geofencing, notifications, Socket.IO, dark mode, PDF/Excel export.
-
-## Assumptions
-
-- Attendance days are calendar days in `APP_TIMEZONE`; one record per user per day. A user with an unclosed record from an earlier day must punch out of it before punching in again.
-- Selfies are checked by people, not by software; the app makes no biometric or face-matching claims.
-- Managers are linked to employees by an admin; a manager's own records are reviewed by an admin.
-- Browsers require HTTPS (or localhost) for camera and location access.
-- The daily report lists recorded attendance for the date; it does not infer absences.
-- Tokens are kept in `localStorage` for simplicity.
-
-## Storage and known limitations
-
-- **Selfie storage:** each selfie is one document (raw bytes, MIME type, size, owner, in/out) of at most 1.5 MB; a 640px camera JPEG is typically a few tens of kilobytes. Selfies are only read by id through the authorized endpoint. A selfie written for a punch that then fails is deleted. Watch database size on small Atlas tiers; if storage volume ever outgrows MongoDB, only `backend/src/utils/selfieStorage.js` needs replacing (for example with object storage).
-- **Migration from the earlier disk-based version:** attendance records created before this change reference files on a server disk and are not migrated. Their selfies now show as unavailable. This only affects databases used with that earlier build; start new deployments from an empty database, or re-capture.
-- Camera and location need HTTPS (or localhost). Camera and GPS behaviour has been exercised with a fake camera and emulated location, not on physical devices.
-- No refresh tokens or token revocation beyond disabling the account; rate limiting is per backend instance and applies to the login and signup routes.
+No license file is included in this repository.
