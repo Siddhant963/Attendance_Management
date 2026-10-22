@@ -2,7 +2,8 @@ import { Attendance } from '../models/Attendance.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import { businessDate } from '../utils/dates.js';
-import { saveSelfie } from '../utils/selfieStorage.js';
+import { deleteSelfie, saveSelfie } from '../utils/selfieStorage.js';
+import { logger } from '../config/logger.js';
 import { userScopeFilter, canAccessUser, assertCanReview } from './scopeService.js';
 
 export const statusForMinutes = (minutes) => (minutes >= env.standardShiftMinutes ? 'completed' : 'incomplete');
@@ -14,6 +15,15 @@ const buildPunch = async (user, kind, now, { selfie, latitude, longitude, accura
   longitude,
   ...(accuracy !== undefined ? { accuracy } : {}),
 });
+
+/** Best-effort rollback of a selfie whose attendance write failed; never masks the original error. */
+async function discardSelfie(punch) {
+  try {
+    await deleteSelfie(punch.selfie);
+  } catch (err) {
+    logger.warn(`Could not remove orphaned selfie ${punch.selfie}: ${err.message}`);
+  }
+}
 
 export async function punchIn(user, payload) {
   const now = new Date();
@@ -28,6 +38,7 @@ export async function punchIn(user, payload) {
   try {
     return await Attendance.create({ user: user._id, date, punchIn: punch });
   } catch (err) {
+    await discardSelfie(punch);
     if (err.code === 11000) throw ApiError.conflict('Attendance for today is already recorded');
     throw err;
   }
@@ -41,12 +52,21 @@ export async function punchOut(user, payload) {
   const workingMinutes = Math.max(0, Math.round((now - open.punchIn.at) / 60000));
   const punch = await buildPunch(user, 'out', now, payload);
   // Guarded update: a concurrent second punch-out matches nothing.
-  const updated = await Attendance.findOneAndUpdate(
-    { _id: open._id, punchOut: { $exists: false } },
-    { punchOut: punch, workingMinutes, status: statusForMinutes(workingMinutes) },
-    { returnDocument: 'after' }
-  );
-  if (!updated) throw ApiError.conflict('You are already punched out');
+  let updated;
+  try {
+    updated = await Attendance.findOneAndUpdate(
+      { _id: open._id, punchOut: { $exists: false } },
+      { punchOut: punch, workingMinutes, status: statusForMinutes(workingMinutes) },
+      { returnDocument: 'after' }
+    );
+  } catch (err) {
+    await discardSelfie(punch);
+    throw err;
+  }
+  if (!updated) {
+    await discardSelfie(punch);
+    throw ApiError.conflict('You are already punched out');
+  }
   return updated;
 }
 
