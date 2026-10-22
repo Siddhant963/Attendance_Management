@@ -1,9 +1,4 @@
-import os from 'node:os';
-import path from 'node:path';
-import fs from 'node:fs';
-
 process.env.NODE_ENV = 'test';
-process.env.UPLOAD_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'attendflow-'));
 
 const { MongoMemoryServer } = await import('mongodb-memory-server');
 const { default: mongoose } = await import('mongoose');
@@ -25,7 +20,6 @@ export async function startDb() {
 export async function stopDb() {
   await mongoose.disconnect();
   await mongod.stop();
-  fs.rmSync(process.env.UPLOAD_DIR, { recursive: true, force: true });
 }
 export async function resetDb() {
   await Promise.all(Object.values(mongoose.models).map((m) => m.deleteMany({})));

@@ -23,6 +23,5 @@ export const env = {
     .map((o) => o.trim())
     .filter(Boolean),
   timezone: process.env.APP_TIMEZONE || 'Asia/Kolkata',
-  uploadDir: process.env.UPLOAD_DIR || 'uploads',
   standardShiftMinutes: 8 * 60,
 };
