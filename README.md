@@ -44,6 +44,7 @@ Backend (`backend/.env`, see `backend/.env.example`):
 | `PORT` | no | Defaults to 5000; hosts such as Render provide it. |
 | `JWT_EXPIRES_IN` | no | Defaults to `1d`. |
 | `APP_TIMEZONE` | no | Business timezone for attendance days; defaults to `Asia/Kolkata`. |
+| `DNS_SERVERS` | no | Comma-separated DNS servers for Node, for example `1.1.1.1,8.8.8.8`. Only needed when a `mongodb+srv://` URI fails with `querySrv ECONNREFUSED` because the local router refuses SRV lookups. |
 | `ALLOW_DEMO_SEED` | no | Only read by `npm run seed`; see Demo accounts. |
 
 Frontend (`frontend/.env`, see `frontend/.env.example`). Vite reads these at **build time**:

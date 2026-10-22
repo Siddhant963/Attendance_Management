@@ -20,8 +20,10 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
   clientOrigins: (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
     .split(',')
-    .map((o) => o.trim())
+    .map((o) => o.trim().replace(/\/+$/, ''))
     .filter(Boolean),
   timezone: process.env.APP_TIMEZONE || 'Asia/Kolkata',
+  // Optional override for Node's DNS resolver, for networks whose router refuses the SRV lookups mongodb+srv:// needs.
+  dnsServers: (process.env.DNS_SERVERS || '').split(',').map((s) => s.trim()).filter(Boolean),
   standardShiftMinutes: 8 * 60,
 };

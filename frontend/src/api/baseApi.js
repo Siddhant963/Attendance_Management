@@ -1,7 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { logout } from '../features/auth/authSlice.js';
 
-export const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Tolerates a trailing slash and a missing /api suffix in VITE_API_URL; the backend always serves under /api.
+const configuredUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+export const API_URL = configuredUrl.endsWith('/api') ? configuredUrl : `${configuredUrl}/api`;
 
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: API_URL,
