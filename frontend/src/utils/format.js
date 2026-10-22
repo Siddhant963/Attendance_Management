@@ -40,5 +40,11 @@ export const OVERTIME_STATUS = {
   rejected: { label: 'Rejected', tone: 'danger' },
 };
 
+export const ROLES = {
+  employee: { label: 'Employee' },
+  manager: { label: 'Manager' },
+  admin: { label: 'Admin' },
+};
+
 export const initials = (name = '') =>
   name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || '?';

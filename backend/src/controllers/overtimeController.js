@@ -1,7 +1,8 @@
 import * as service from '../services/overtimeService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { mapItems } from '../utils/pagination.js';
 
-const page = (result) => ({ ...result, items: result.items.map(service.serialize) });
+const page = (result) => mapItems(result, service.serialize);
 
 export const create = asyncHandler(async (req, res) => {
   const ot = await service.request(req.user, req.body);

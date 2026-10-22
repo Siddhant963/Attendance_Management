@@ -1,7 +1,8 @@
 import { Attendance } from '../models/Attendance.js';
 import { OvertimeRequest } from '../models/OvertimeRequest.js';
 import { ApiError } from '../utils/ApiError.js';
-import { userScopeFilter, assertCanReview } from './scopeService.js';
+import { pageResult } from '../utils/pagination.js';
+import { reviewScopeFilter, assertCanReview } from './scopeService.js';
 
 export async function request(user, { attendanceId, requestedHours, reason }) {
   const attendance = await Attendance.findOne({ _id: attendanceId, user: user._id });
@@ -31,18 +32,14 @@ async function paginate(filter, page, limit) {
     populateRefs(OvertimeRequest.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit)),
     OvertimeRequest.countDocuments(filter),
   ]);
-  return { items, total, page, pages: Math.ceil(total / limit) || 1 };
+  return pageResult(items, total, { page, limit });
 }
 
 export const listMine = (user, { status, page, limit }) => paginate({ user: user._id, ...(status && { status }) }, page, limit);
 
-/** Approval queue: requests from the actor's scope, excluding the actor's own. */
+/** Approval queue: requests from users the actor may review (never the actor's own). */
 export async function listScoped(actor, { status, page, limit }) {
-  const scope = await userScopeFilter(actor);
-  const users = scope.user
-    ? { $in: scope.user.$in.filter((id) => String(id) !== String(actor._id)) }
-    : { $ne: actor._id };
-  return paginate({ user: users, ...(status && { status }) }, page, limit);
+  return paginate({ ...(await reviewScopeFilter(actor)), ...(status && { status }) }, page, limit);
 }
 
 export async function decide(actor, id, { decision, remarks }) {

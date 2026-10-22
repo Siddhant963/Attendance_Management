@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, selectUser } from '../features/auth/authSlice.js';
-import { baseApi } from '../api/baseApi.js';
+import { selectUser } from '../features/auth/authSlice.js';
+import { endSession } from '../api/baseApi.js';
 import { Icon } from './ui.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import { initials } from '../utils/format.js';
@@ -47,10 +47,7 @@ export default function AppLayout() {
     setOpen(false);
   }
 
-  const signOut = () => {
-    dispatch(logout());
-    dispatch(baseApi.util.resetApiState());
-  };
+  const signOut = () => dispatch(endSession());
 
   return (
     <div className="shell">

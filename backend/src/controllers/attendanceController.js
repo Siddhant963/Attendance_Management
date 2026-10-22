@@ -1,9 +1,10 @@
 import * as service from '../services/attendanceService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { mapItems } from '../utils/pagination.js';
 import { readSelfie } from '../utils/selfieStorage.js';
 import { ApiError } from '../utils/ApiError.js';
 
-const page = (result) => ({ ...result, items: result.items.map(service.serialize) });
+const page = (result) => mapItems(result, service.serialize);
 
 export const punchIn = asyncHandler(async (req, res) => {
   res.status(201).json({ attendance: service.serialize(await service.punchIn(req.user, req.body)) });

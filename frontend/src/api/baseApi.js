@@ -19,7 +19,7 @@ const baseQuery = async (args, api, extra) => {
   const result = await rawBaseQuery(args, api, extra);
   const url = typeof args === 'string' ? args : args.url;
   if (result.error?.status === 401 && !url.startsWith('/auth/login') && api.getState().auth.token) {
-    api.dispatch(logout());
+    api.dispatch(endSession());
   }
   return result;
 };
@@ -33,3 +33,9 @@ export const baseApi = createApi({
 
 export const errorMessage = (err, fallback = 'Something went wrong') =>
   err?.data?.message || (err?.status === 'FETCH_ERROR' ? 'Cannot reach the server' : fallback);
+
+/** Signs the user out and discards cached server data so the next user in this tab never sees it. */
+export const endSession = () => (dispatch) => {
+  dispatch(logout());
+  dispatch(baseApi.util.resetApiState());
+};

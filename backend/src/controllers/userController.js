@@ -1,6 +1,7 @@
 import { User } from '../models/User.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { pageResult } from '../utils/pagination.js';
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -15,7 +16,7 @@ export const list = asyncHandler(async (req, res) => {
     User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).populate('manager', 'name'),
     User.countDocuments(filter),
   ]);
-  res.json({ items, total, page, pages: Math.ceil(total / limit) || 1 });
+  res.json(pageResult(items, total, { page, limit }));
 });
 
 /** Admin or manager: users whose records the caller may filter by (id + name only). */
@@ -41,9 +42,13 @@ export const update = asyncHandler(async (req, res) => {
     if (manager !== null) {
       if (String(manager) === String(user._id)) throw ApiError.badRequest('A user cannot be their own manager');
       const mgr = await User.findById(manager);
-      if (!mgr || mgr.role !== 'manager') throw ApiError.badRequest('Selected manager is not a manager');
+      if (!mgr || mgr.role !== 'manager' || !mgr.isActive) throw ApiError.badRequest('Selected manager is not an active manager');
     }
     user.manager = manager;
+  }
+  if (role && role !== 'manager' && user.role === 'manager') {
+    // A non-manager cannot own a team; release the employees so they are not left unreviewable.
+    await User.updateMany({ manager: user._id }, { manager: null });
   }
   if (role) user.role = role;
   if (isActive !== undefined) user.isActive = isActive;

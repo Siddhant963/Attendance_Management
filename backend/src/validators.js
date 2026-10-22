@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ROLES } from './models/User.js';
 import { isDateString } from './utils/dates.js';
 
 const objectId = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid identifier');
@@ -71,13 +72,13 @@ export const overtimeDecisionSchema = z
 
 export const userQuerySchema = z.object({
   search: z.string().trim().max(80).optional(),
-  role: z.enum(['employee', 'manager', 'admin']).optional(),
+  role: z.enum(ROLES).optional(),
   ...pagination,
 });
 
 export const userUpdateSchema = z
   .object({
-    role: z.enum(['employee', 'manager', 'admin']).optional(),
+    role: z.enum(ROLES).optional(),
     manager: objectId.nullable().optional(),
     isActive: z.boolean().optional(),
   })

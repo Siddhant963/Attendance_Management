@@ -6,7 +6,7 @@ import { env } from '../config/env.js';
 import { connectDb } from '../config/db.js';
 import { User } from '../models/User.js';
 
-export const DEMO_PASSWORD = 'Demo@12345';
+const DEMO_PASSWORD = 'Demo@12345';
 
 const demoUsers = [
   { name: 'Demo Admin', email: 'admin.demo@attendflow.test', role: 'admin' },

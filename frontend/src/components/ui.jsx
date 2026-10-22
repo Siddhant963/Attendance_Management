@@ -5,7 +5,7 @@ export function Icon({ name, className = '', ...rest }) {
   return <span className={`material-symbols-outlined ${className}`} aria-hidden="true" {...rest}>{name}</span>;
 }
 
-export function Spinner() {
+function Spinner() {
   return <div className="spinner" role="status" aria-label="Loading" />;
 }
 
@@ -84,6 +84,11 @@ export function InputWithIcon({ icon, trailing, ...input }) {
       {trailing && <div className="trail">{trailing}</div>}
     </div>
   );
+}
+
+/** <option> elements for a { value: { label } } map such as ATTENDANCE_STATUS. */
+export function MapOptions({ map }) {
+  return Object.entries(map).map(([value, { label }]) => <option key={value} value={value}>{label}</option>);
 }
 
 export function Field({ label, id, error, children }) {

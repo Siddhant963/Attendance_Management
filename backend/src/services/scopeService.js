@@ -5,7 +5,7 @@ import { ApiError } from '../utils/ApiError.js';
  * Returns the user ids whose attendance the actor may see.
  * null means unrestricted (admin).
  */
-export async function visibleUserIds(actor) {
+async function visibleUserIds(actor) {
   if (actor.role === 'admin') return null;
   if (actor.role === 'manager') {
     const team = await User.find({ manager: actor._id }).select('_id').lean();
@@ -18,6 +18,12 @@ export async function visibleUserIds(actor) {
 export async function userScopeFilter(actor) {
   const ids = await visibleUserIds(actor);
   return ids === null ? {} : { user: { $in: ids } };
+}
+
+/** Like userScopeFilter, but without the actor: reviewers can never act on their own records. */
+export async function reviewScopeFilter(actor) {
+  const ids = await visibleUserIds(actor);
+  return { user: ids === null ? { $ne: actor._id } : { $in: ids.filter((id) => String(id) !== String(actor._id)) } };
 }
 
 export async function canAccessUser(actor, ownerId) {

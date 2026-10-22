@@ -227,3 +227,72 @@ describe('users, reports, dashboard', () => {
     assert.equal((await api.get('/api/dashboard/summary').set(admin.auth)).body.presentToday, 2);
   });
 });
+
+describe('review scope and team integrity', () => {
+  async function completedDay(user) {
+    await api.post('/api/attendance/punch-in').set(user.auth).send(punchBody());
+    await Attendance.updateOne({ user: user.user._id }, { 'punchIn.at': hoursAgo(9) });
+    return (await api.post('/api/attendance/punch-out').set(user.auth).send(punchBody())).body.attendance;
+  }
+  const askOvertime = (user, att) =>
+    api.post('/api/overtime').set(user.auth).send({ attendanceId: att.id, requestedHours: 1, reason: 'Release support' });
+
+  test('dashboard counts and the approval queue exclude the reviewer\'s own records', async () => {
+    const admin = await makeUser('admin');
+    const manager = await makeUser('manager', { manager: admin.user._id });
+    const emp = await makeUser('employee', { manager: manager.user._id });
+    for (const u of [admin, emp]) await askOvertime(u, await completedDay(u));
+
+    const summary = (await api.get('/api/dashboard/summary').set(admin.auth)).body;
+    const queue = (await api.get('/api/overtime?status=pending').set(admin.auth)).body;
+    assert.equal(queue.total, 1);
+    assert.equal(queue.items[0].user.id, String(emp.user._id));
+    assert.equal(summary.pendingOvertime, queue.total);
+    assert.equal(summary.pendingVerification, 1);
+  });
+
+  test('demoting a manager releases their team', async () => {
+    const admin = await makeUser('admin');
+    const manager = await makeUser('manager');
+    const emp = await makeUser('employee', { manager: manager.user._id });
+    const res = await api.patch(`/api/users/${manager.user._id}`).set(admin.auth).send({ role: 'employee' });
+    assert.equal(res.status, 200);
+    const users = (await api.get('/api/users?limit=50').set(admin.auth)).body.items;
+    assert.equal(users.find((u) => u.id === String(emp.user._id)).manager, null);
+  });
+
+  test('only active managers can be assigned', async () => {
+    const admin = await makeUser('admin');
+    const manager = await makeUser('manager');
+    const emp = await makeUser('employee');
+    await api.patch(`/api/users/${manager.user._id}`).set(admin.auth).send({ isActive: false });
+    const res = await api.patch(`/api/users/${emp.user._id}`).set(admin.auth).send({ manager: String(manager.user._id) });
+    assert.equal(res.status, 400);
+  });
+
+  test('concurrent overtime requests for one day create exactly one request', async () => {
+    const emp = await makeUser('employee');
+    const att = await completedDay(emp);
+    const results = await Promise.all([1, 2, 3].map(() => askOvertime(emp, att)));
+    assert.equal(results.filter((r) => r.status === 201).length, 1);
+    assert.equal(results.filter((r) => r.status === 409).length, 2);
+    assert.equal((await api.get('/api/overtime/me').set(emp.auth)).body.total, 1);
+  });
+
+  test('list endpoints share one pagination contract', async () => {
+    const admin = await makeUser('admin');
+    await makeUser('employee');
+    await makeUser('employee');
+    const emp = await makeUser('employee');
+    await completedDay(emp);
+    const users = (await api.get('/api/users?limit=2').set(admin.auth)).body;
+    assert.deepEqual(Object.keys(users).sort(), ['items', 'page', 'pages', 'total']);
+    assert.equal(users.items.length, 2);
+    assert.equal(users.pages, 2);
+    for (const url of ['/api/attendance/me', '/api/overtime/me']) {
+      const body = (await api.get(url).set(emp.auth)).body;
+      assert.deepEqual(Object.keys(body).sort(), ['items', 'page', 'pages', 'total'], url);
+    }
+    assert.equal((await api.get('/api/overtime/me').set(emp.auth)).body.pages, 1);
+  });
+});

@@ -1,7 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useEffect } from 'react';
-import { selectAuthReady, selectToken, selectUser, setUser, logout } from '../features/auth/authSlice.js';
+import { selectAuthReady, selectToken, selectUser, setUser } from '../features/auth/authSlice.js';
+import { endSession } from '../api/baseApi.js';
 import { useGetMeQuery } from '../api/endpoints.js';
 import { CenterLoader } from './ui.jsx';
 
@@ -17,7 +18,7 @@ export function RequireAuth() {
     if (data?.user) dispatch(setUser(data.user));
   }, [data, dispatch]);
   useEffect(() => {
-    if (isError) dispatch(logout());
+    if (isError) dispatch(endSession());
   }, [isError, dispatch]);
 
   if (!token) return <Navigate to="/login" replace state={{ from: location }} />;

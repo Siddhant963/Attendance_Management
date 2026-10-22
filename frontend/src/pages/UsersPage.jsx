@@ -1,17 +1,17 @@
 import { useState } from 'react';
+import { useFilters } from '../hooks/useFilters.js';
 import { useSelector } from 'react-redux';
 import { selectUser } from '../features/auth/authSlice.js';
-import { Alert, Card, Field, Icon, PageHeader, Pagination, QueryState } from '../components/ui.jsx';
+import { Alert, Card, Field, Icon, MapOptions, PageHeader, Pagination, QueryState } from '../components/ui.jsx';
 import { useGetManagersQuery, useGetUsersQuery, useUpdateUserMutation } from '../api/endpoints.js';
 import { errorMessage } from '../api/baseApi.js';
-import { fmtDate, initials } from '../utils/format.js';
+import { ROLES, fmtDate, initials } from '../utils/format.js';
 
 export default function UsersPage() {
   const me = useSelector(selectUser);
-  const [filters, setFilters] = useState({ search: '', role: '' });
-  const [page, setPage] = useState(1);
+  const { params, bind, setPage } = useFilters({ search: '', role: '' });
   const [error, setError] = useState('');
-  const query = useGetUsersQuery({ page, limit: 10, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) });
+  const query = useGetUsersQuery(params);
   const managers = useGetManagersQuery();
   const [update, { isLoading }] = useUpdateUserMutation();
 
@@ -22,10 +22,6 @@ export default function UsersPage() {
     } catch (err) {
       setError(errorMessage(err));
     }
-  };
-  const setFilter = (k) => (e) => {
-    setFilters((f) => ({ ...f, [k]: e.target.value }));
-    setPage(1);
   };
 
   return (
@@ -38,13 +34,11 @@ export default function UsersPage() {
       <Card>
         <Alert>{error}</Alert>
         <div className="filters">
-          <Field label="Search" id="search"><input id="search" placeholder="Name or email" value={filters.search} onChange={setFilter('search')} /></Field>
+          <Field label="Search" id="search"><input id="search" placeholder="Name or email" {...bind('search')} /></Field>
           <Field label="Role" id="role">
-            <select id="role" value={filters.role} onChange={setFilter('role')}>
+            <select id="role" {...bind('role')}>
               <option value="">All roles</option>
-              <option value="employee">Employee</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
+              <MapOptions map={ROLES} />
             </select>
           </Field>
         </div>
@@ -68,9 +62,7 @@ export default function UsersPage() {
                           <td className="data-mono">{u.email}</td>
                           <td>
                             <select aria-label={`Role for ${u.name}`} value={u.role} disabled={isLoading || self} onChange={(e) => change(u.id, { role: e.target.value })}>
-                              <option value="employee">Employee</option>
-                              <option value="manager">Manager</option>
-                              <option value="admin">Admin</option>
+                              <MapOptions map={ROLES} />
                             </select>
                           </td>
                           <td>

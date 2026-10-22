@@ -3,7 +3,7 @@ import { OvertimeRequest } from '../models/OvertimeRequest.js';
 import { User } from '../models/User.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { businessDate } from '../utils/dates.js';
-import { userScopeFilter } from '../services/scopeService.js';
+import { reviewScopeFilter, userScopeFilter } from '../services/scopeService.js';
 
 const countBy = (arr, key) => Object.fromEntries(arr.map((x) => [x._id ?? 'none', x[key]]));
 
@@ -29,11 +29,12 @@ export const summary = asyncHandler(async (req, res) => {
   }
 
   const scope = await userScopeFilter(req.user);
+  const reviewScope = await reviewScopeFilter(req.user);
   const teamIds = scope.user ? scope.user.$in : null;
   const [presentToday, pendingVerification, pendingOvertime, teamSize, roles] = await Promise.all([
     Attendance.countDocuments({ ...scope, date: today }),
-    Attendance.countDocuments({ ...scope, 'verification.status': 'pending', status: { $ne: 'in_progress' } }),
-    OvertimeRequest.countDocuments({ ...scope, status: 'pending' }),
+    Attendance.countDocuments({ ...reviewScope, 'verification.status': 'pending', status: { $ne: 'in_progress' } }),
+    OvertimeRequest.countDocuments({ ...reviewScope, status: 'pending' }),
     teamIds ? teamIds.length : User.countDocuments({ isActive: true }),
     req.user.role === 'admin' ? User.aggregate([{ $group: { _id: '$role', n: { $sum: 1 } } }]) : [],
   ]);

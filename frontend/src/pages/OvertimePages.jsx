@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useFilters } from '../hooks/useFilters.js';
 import { Alert, Badge, Card, Field, Icon, Modal, PageHeader, Pagination, QueryState } from '../components/ui.jsx';
 import OvertimeRequestForm from '../components/OvertimeRequestForm.jsx';
 import { useDecideOvertimeMutation, useGetMyAttendanceQuery, useGetMyOvertimeQuery, useGetOvertimeQueueQuery } from '../api/endpoints.js';
@@ -26,9 +27,8 @@ function StatusTabs({ value, onChange }) {
 
 /** Employee screen: track own overtime requests. */
 export function MyOvertimePage() {
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
-  const query = useGetMyOvertimeQuery({ page, limit: 10, ...(status && { status }) });
+  const { filters, params, set, setPage } = useFilters({ status: '' });
+  const query = useGetMyOvertimeQuery(params);
   const eligible = useGetMyAttendanceQuery({ overtime: 'none', limit: 100 }).data?.items.filter((r) => r.punchOut) ?? [];
 
   return (
@@ -47,7 +47,7 @@ export function MyOvertimePage() {
           )}
         </Card>
         <Card icon="history" title="Request history">
-        <StatusTabs value={status} onChange={(v) => { setStatus(v); setPage(1); }} />
+        <StatusTabs value={filters.status} onChange={(v) => set('status', v)} />
         <QueryState query={query} isEmpty={query.data?.items.length === 0} emptyText="No overtime requests yet.">
           {query.data && (
             <>
@@ -124,10 +124,9 @@ function DecisionModal({ request, decision, onClose }) {
 
 /** Manager/admin screen: review team overtime requests. */
 export function ApprovalsPage() {
-  const [status, setStatus] = useState('pending');
-  const [page, setPage] = useState(1);
+  const { filters, params, set, setPage } = useFilters({ status: 'pending' });
   const [active, setActive] = useState(null); // { request, decision }
-  const query = useGetOvertimeQueueQuery({ page, limit: 10, ...(status && { status }) });
+  const query = useGetOvertimeQueueQuery(params);
 
   return (
     <>
@@ -137,7 +136,7 @@ export function ApprovalsPage() {
         subtitle="Request details and authorized approve/reject actions for your team."
       />
       <Card>
-        <StatusTabs value={status} onChange={(v) => { setStatus(v); setPage(1); }} />
+        <StatusTabs value={filters.status} onChange={(v) => set('status', v)} />
         <QueryState query={query} isEmpty={query.data?.items.length === 0} emptyText="No overtime requests in this view.">
           {query.data && (
             <>

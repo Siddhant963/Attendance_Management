@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Card, Field, Icon, Modal, PageHeader, Pagination, QueryState, Stat } from '../components/ui.jsx';
+import { useFilters } from '../hooks/useFilters.js';
+import { Card, Field, Icon, MapOptions, Modal, PageHeader, Pagination, QueryState, Stat } from '../components/ui.jsx';
 import AttendanceTable from '../components/AttendanceTable.jsx';
 import AttendanceDetail from '../components/AttendanceDetail.jsx';
 import OvertimeRequestForm from '../components/OvertimeRequestForm.jsx';
 import { useGetMyAttendanceQuery, useGetSummaryQuery } from '../api/endpoints.js';
-import { fmtDuration } from '../utils/format.js';
+import { ATTENDANCE_STATUS, fmtDuration } from '../utils/format.js';
 
 function OvertimeModal({ record, onClose }) {
   return (
@@ -15,18 +16,12 @@ function OvertimeModal({ record, onClose }) {
 }
 
 export default function MyAttendancePage() {
-  const [filters, setFilters] = useState({ from: '', to: '', status: '' });
-  const [page, setPage] = useState(1);
+  const { params, bind, setPage } = useFilters({ from: '', to: '', status: '' });
   const [detail, setDetail] = useState(null);
   const [otFor, setOtFor] = useState(null);
 
-  const params = { page, limit: 10, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) };
   const query = useGetMyAttendanceQuery(params);
   const month = useGetSummaryQuery().data?.month;
-  const setFilter = (k) => (e) => {
-    setFilters((f) => ({ ...f, [k]: e.target.value }));
-    setPage(1);
-  };
 
   return (
     <>
@@ -45,14 +40,12 @@ export default function MyAttendancePage() {
       )}
       <Card>
         <div className="filters">
-          <Field label="From" id="from"><input id="from" type="date" value={filters.from} onChange={setFilter('from')} /></Field>
-          <Field label="To" id="to"><input id="to" type="date" value={filters.to} onChange={setFilter('to')} /></Field>
+          <Field label="From" id="from"><input id="from" type="date" {...bind('from')} /></Field>
+          <Field label="To" id="to"><input id="to" type="date" {...bind('to')} /></Field>
           <Field label="Status" id="status">
-            <select id="status" value={filters.status} onChange={setFilter('status')}>
+            <select id="status" {...bind('status')}>
               <option value="">All</option>
-              <option value="completed">Completed</option>
-              <option value="incomplete">Incomplete</option>
-              <option value="in_progress">In progress</option>
+              <MapOptions map={ATTENDANCE_STATUS} />
             </select>
           </Field>
         </div>

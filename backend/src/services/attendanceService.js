@@ -2,11 +2,12 @@ import { Attendance } from '../models/Attendance.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import { businessDate } from '../utils/dates.js';
+import { pageResult } from '../utils/pagination.js';
 import { deleteSelfie, saveSelfie } from '../utils/selfieStorage.js';
 import { logger } from '../config/logger.js';
 import { userScopeFilter, canAccessUser, assertCanReview } from './scopeService.js';
 
-export const statusForMinutes = (minutes) => (minutes >= env.standardShiftMinutes ? 'completed' : 'incomplete');
+const statusForMinutes = (minutes) => (minutes >= env.standardShiftMinutes ? 'completed' : 'incomplete');
 
 const buildPunch = async (user, kind, now, { selfie, latitude, longitude, accuracy }) => ({
   at: now,
@@ -104,7 +105,7 @@ export async function list(actor, query, { mineOnly = false } = {}) {
       .populate('verification.reviewedBy', 'name'),
     Attendance.countDocuments(filter),
   ]);
-  return { items, total, page, pages: Math.ceil(total / limit) || 1 };
+  return pageResult(items, total, { page, limit });
 }
 
 export async function getAccessible(actor, id) {
